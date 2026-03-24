@@ -39,4 +39,12 @@ function utils.load_multisig_contract(process_id, name, threshold, signers)
     print("Loading multisig contract for process_id:", process_id)
 end
 
+function utils.is_arweave_address(address)
+    if type(address) ~= "string" then
+        return false
+    end
+    -- Arweave addresses are 43 characters long and base64url encoded
+    return string.len(address) == 43 and string.match(address, "^[A-Za-z0-9_-]+$") ~= nil
+end
+
 return utils
