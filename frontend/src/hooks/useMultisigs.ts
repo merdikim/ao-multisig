@@ -18,15 +18,15 @@ export function useMultisigs() {
       // console.log(multisigs)
       return [{
         name: "My test MTSG",
-        processId: "raPdBZ6mC80N70uCd6u5lOJJphDQJYzFF2hCOxMmKp4",
+        processId: "7c7kJO2K1LQgTtfKy-tWLVpqYph04c-3r_KD0USkwpQ",
         createdAt: 53875493847
       }, {
         name: "My second long test MTSG",
-        processId: "raPdBZ6mC80N70uCd6u5lOJJphDQJYzFF2hCOxMmKp5",
+        processId: "7c7kJO2K1LQgTtfKy-tWLVpqYph04c-3r_KD0USkwph",
         createdAt: 53875493847
       }, {
         name: "My third super long test to truncate",
-        processId: "raPdBZ6mC80N70uCd6u5lOJJphDQJYzFF2hCOxMmKp6",
+        processId: "7c7kJO2K1LQgTtfKy-tWLVpqYph04c-3r_KD0USkwpz",
         createdAt: 53875493847
       }]
     },

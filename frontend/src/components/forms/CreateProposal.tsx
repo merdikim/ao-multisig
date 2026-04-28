@@ -3,7 +3,11 @@ import { useCreateProposal } from "@/hooks/useMultisig";
 import { Loader2, Plus, Vote } from "lucide-react";
 import { FormEvent, useState } from "react";
 
-function ProposalForm({ multisigId }: { multisigId: string }) {
+type CreateProposalProps = {
+  multisigId: string;
+};
+
+function CreateProposal({ multisigId }: CreateProposalProps) {
   const createProposal = useCreateProposal();
   const { isConnected } = useWallet();
   const [description, setDescription] = useState("");
@@ -37,8 +41,13 @@ function ProposalForm({ multisigId }: { multisigId: string }) {
           placeholder="Describe the action signers should approve"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
+          maxLength={500}
           required
         />
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>Proposal summary</span>
+          <span>{description.length}/500</span>
+        </div>
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-slate-600">
             Voting window
@@ -56,7 +65,9 @@ function ProposalForm({ multisigId }: { multisigId: string }) {
         </label>
         <button
           className="button-primary w-full"
-          disabled={createProposal.isPending || !isConnected}
+          disabled={
+            createProposal.isPending || !isConnected || description.trim() === ""
+          }
           type="submit"
         >
           {createProposal.isPending ? (
@@ -66,12 +77,20 @@ function ProposalForm({ multisigId }: { multisigId: string }) {
           )}
           Submit proposal
         </button>
+        {!isConnected ? (
+          <p className="text-sm text-slate-500">
+            Connect your wallet to submit a proposal.
+          </p>
+        ) : null}
         {createProposal.error ? (
           <p className="text-sm text-rose-600">{createProposal.error.message}</p>
+        ) : null}
+        {createProposal.isSuccess ? (
+          <p className="text-sm text-emerald-700">Proposal submitted.</p>
         ) : null}
       </div>
     </form>
   );
 }
 
-export default ProposalForm;
+export default CreateProposal;

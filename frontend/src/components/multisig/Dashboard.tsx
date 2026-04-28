@@ -2,6 +2,7 @@ import { Clock3, Copy, Loader2 } from "lucide-react";
 import { useMultisig } from "@/hooks/useMultisig";
 import type { Multisig, MultisigData, Proposal } from "@/types";
 import { formatDate, getProposalStatus, getVoteCounts, statusTone } from "@/utils";
+import CreateProposal from "@/components/forms/CreateProposal";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not load multisig data.";
@@ -168,10 +169,9 @@ function MultisigDashboard({ multisig }: { multisig: Multisig | null }) {
             )}
           </div>
         </section>
-        {/* <div className="space-y-5">
-          <ProposalForm multisigDataId={multisigData.processId} />
-          <SignerList multisigDataId={multisigData.processId} signers={multisigData.signers} />
-        </div> */}
+        <div className="space-y-5">
+          <CreateProposal multisigId={multisigData.processId} />
+        </div>
       </div>
     </main>
   );

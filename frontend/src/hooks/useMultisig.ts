@@ -30,17 +30,15 @@ export function useMultisig(multisigId:string) {
         throw new Error("Could not load multisig data.")
       }
       const {multisig_info} = await multisigDataResult.json()
-      const rawProposals = multisig_info.Proposals || multisig_info.proposals || []
-      const rawSigners = multisig_info.Signers || multisig_info.signers || []
+      const proposals = multisig_info.proposals || []
+      const signers = multisig_info.signers || []
 
       return {
         processId: multisigId,
-        name: multisig_info.Name || multisig_info.name || "Unnamed multisig",
+        name: multisig_info.name || "Unnamed multisig",
         threshold: Number(multisig_info.threshold || multisig_info.treshold || 1),
-        signers: Array.isArray(rawSigners) ? rawSigners : Object.keys(rawSigners),
-        proposals: Array.isArray(rawProposals)
-          ? rawProposals
-          : (Object.values(rawProposals) as Proposal[]),
+        signers: Object.keys(signers),
+        proposals: proposals || [],
       } satisfies MultisigData
     },
   });
@@ -56,7 +54,8 @@ export function useCreateMultisig() {
         throw new Error("Connect Wander wallet before creating a multisig.");
       }
 
-      await sendCreateMultisig(input);
+      const res = await sendCreateMultisig(input);
+      console.log(res)
       //return createMultisig(input, address);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
@@ -73,7 +72,11 @@ export function useCreateProposal() {
         throw new Error("Connect Wander wallet before creating a proposal.");
       }
 
-      return sendCreateProposal(input);
+      const result = await sendCreateProposal(input);
+      if(result?.isError) {
+        throw new Error(result.error)
+      }
+      return true
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
   });

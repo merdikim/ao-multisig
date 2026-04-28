@@ -1,8 +1,11 @@
-import {connect} from "@permaweb/aoconnect"
+import {connect, createDataItemSigner} from "@permaweb/aoconnect"
 import type { CreateMultisigInput, CreateProposalInput, Vote, Tag, SendActionInput } from "@/types";
 import { isArweaveAddress } from "@/utils";
+import { hyperbeamUrl, scheduler } from "@/constants";
 
-const {createDataItemSigner, message, result} = connect({MODE:"mainnet"})
+const { message, result} = connect(
+  {MODE:"mainnet", SCHEDULER:scheduler, URL:hyperbeamUrl, signer: createDataItemSigner(window.arweaveWallet)}
+)
 const configuredIndexerProcessId = import.meta.env.VITE_INDEXER_PROCESS_ID as
   | string
   | undefined;
@@ -15,6 +18,22 @@ function getSigner() {
   return createDataItemSigner(window.arweaveWallet);
 }
 
+async function checkResult(process:string, messageId:string) {
+  const { Messages } = await result({ process, message: messageId })
+  if(Messages.length == 0) {
+    return {
+      isError: false,
+      error: ''
+    }
+  }
+  const error = Messages[0].Tags.find((tag:Tag) => tag.name == "Error")
+  return {
+    isError:true,
+    error: error.value
+  }
+ 
+}
+
 async function sendAction({process, action, tags = [], data}: SendActionInput) {
   
   const messageId = await message({
@@ -24,10 +43,7 @@ async function sendAction({process, action, tags = [], data}: SendActionInput) {
     data: data,
   });
 
-  return {
-    messageId,
-    result: await result({ process, message: messageId }),
-  };
+  return messageId
 }
 
 export async function sendCreateMultisig(input: CreateMultisigInput) {
@@ -62,7 +78,9 @@ export async function sendCreateProposal(input: CreateProposalInput) {
     })
   }
 
-  return sendAction(action);
+  const messageId = await sendAction(action)
+  const result = await checkResult(input.multisigId, messageId)
+  return result
 }
 
 export async function sendVoteProposal(
