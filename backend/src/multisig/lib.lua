@@ -148,6 +148,34 @@ local function execute_proposal(proposal)
     return true
 end
 
+local function update_proposal_status(proposal, timestamp)
+    if proposal.executed or proposal.rejected then
+        return false
+    end
+
+    if timestamp and timestamp > proposal.endTime then
+        proposal.rejected = true
+        proposal.error = "Proposal has expired."
+        return true
+    end
+
+    local yesVotes, noVotes = count_votes(proposal)
+    local threshold = current_threshold()
+    local signers_total = signer_count()
+
+    if yesVotes >= threshold then
+        execute_proposal(proposal)
+        return proposal.executed or proposal.rejected
+    end
+
+    if noVotes > signers_total - threshold then
+        proposal.rejected = true
+        return true
+    end
+
+    return false
+end
+
 function lib.create_proposal(msg)
     local data = json.decode(msg.Data)
 
@@ -271,13 +299,19 @@ function lib.vote(msg)
         return
     end
 
-    if proposal.executed or proposal.rejected then
-        utils.send_error(msg, "Proposal already executed or rejected.")
-        return
-    end
+    local status_changed = update_proposal_status(proposal, msg.Timestamp)
 
-    if msg.Timestamp > proposal.endTime then
-        utils.send_error(msg, "Proposal has expired.")
+    if proposal.executed or proposal.rejected then
+        if status_changed then
+            utils.update_multisig_cache()
+        end
+
+        if proposal.error == "Proposal has expired." then
+            utils.send_error(msg, proposal.error)
+            return
+        end
+
+        utils.send_error(msg, "Proposal already executed or rejected.")
         return
     end
 
@@ -293,19 +327,7 @@ function lib.vote(msg)
 
     proposal.votes[from] = vote
 
-    -- Check if the proposal can be executed based on the wallet quorum.
-    local yesVotes, noVotes = count_votes(proposal)
-
-    local threshold = current_threshold()
-    local signers_total = signer_count()
-
-    if yesVotes >= threshold then
-        execute_proposal(proposal)
-    end
-
-    if noVotes > signers_total - threshold then
-        proposal.rejected = true -- Mark the proposal as rejected since no amount of yes votes can reach the threshold
-    end
+    update_proposal_status(proposal, msg.Timestamp)
 
     utils.update_multisig_cache()
     utils.send_success(msg, { message = "Vote recorded." })

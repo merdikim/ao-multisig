@@ -1,4 +1,4 @@
----@diagnostic disable: undefined-field
+---@diagnostic disable: undefined-field, assign-type-mismatch
 local utils = require("utils.index")
 local json = require("json")
 
@@ -93,6 +93,7 @@ end
 local function emit_patch()
     Send({
         device = "patch@1.0",
+---@diagnostic disable-next-line: assign-type-mismatch
         wallets = Wallets,
         multisigs = Multisigs
     })
