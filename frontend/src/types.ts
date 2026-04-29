@@ -25,7 +25,6 @@ export type Proposal = {
   };
   startTime: number;
   endTime: number;
-  threshold: number;
   executed: string;
   rejected: string;
   votes: Record<string, Vote>;

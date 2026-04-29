@@ -41,6 +41,7 @@ function utils.update_multisig_cache()
         device = 'patch@1.0',
         multisig_info = {
             name = Name,
+            threshold = Threshold,
             signers = Signers,
             proposals = prepare_for_cache(Proposals)
         }
@@ -72,6 +73,7 @@ end
 -- Entry: /Users/merdikim/multisig/backend/src/multisig-indexer/index.lua
 ---@diagnostic disable: undefined-field
 local utils = require("utils.index")
+local json = require("json")
 
 -- Wallets schema:
 -- {
@@ -110,6 +112,8 @@ local function add_multisig_to_wallet(address, multisig)
         name = multisig.name,
         created_at = multisig.created_at,
     }
+
+    Wallets[address] = wallet
 end
 
 local function remove_multisig_from_wallet(address, process_id)
@@ -167,10 +171,23 @@ local function emit_patch()
     })
 end
 
+local function message_data(msg)
+    if type(msg.Data) ~= "string" then
+        return msg.Data or {}
+    end
+
+    local ok, decoded = pcall(json.decode, msg.Data)
+    if ok and type(decoded) == "table" then
+        return decoded
+    end
+
+    return {}
+end
+
 
 Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
     local from = msg.From
-    local data = msg.Data or {}
+    local data = message_data(msg)
     local timestamp = msg.Timestamp
     local name = data.name
     local signers = normalize_signers(data.signers, from)
@@ -200,6 +217,7 @@ Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
     local multisig = {
         process_id = process_id,
         name = name,
+        threshold = threshold,
         signers = signers,
         created_at = timestamp,
         updated_at = timestamp
@@ -219,7 +237,7 @@ end)
 
 Handlers.add("Update-Multisig-Signers", "Update-Multisig-Signers", function(msg)
     local process_id = msg.From
-    local data = msg.Data or {}
+    local data = message_data(msg)
     local timestamp = msg.Timestamp
     local new_signer = data.signer
 
@@ -262,7 +280,7 @@ end)
 
 Handlers.add("Remove-Multisig-Signers", "Remove-Multisig-Signers", function(msg)
     local process_id = msg.From
-    local data = msg.Data or {}
+    local data = message_data(msg)
     local timestamp = msg.Timestamp
     local signer_to_remove = data.signer
 
@@ -289,6 +307,11 @@ Handlers.add("Remove-Multisig-Signers", "Remove-Multisig-Signers", function(msg)
 
     if #multisig.signers == 1 then
         utils.send_error(msg, "Cannot remove the last signer from a multisig")
+        return
+    end
+
+    if multisig.threshold and multisig.threshold > #multisig.signers - 1 then
+        utils.send_error(msg, "Cannot remove signer because the threshold would exceed the signer count")
         return
     end
 

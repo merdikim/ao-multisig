@@ -31,8 +31,10 @@ end
 function utils.update_multisig_cache()
     Send({
         device = 'patch@1.0',
+---@diagnostic disable-next-line: assign-type-mismatch
         multisig_info = {
             name = Name,
+            threshold = Threshold,
             signers = Signers,
             proposals = prepare_for_cache(Proposals)
         }

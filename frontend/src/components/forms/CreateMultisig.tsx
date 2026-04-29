@@ -1,24 +1,37 @@
 import { useWallet } from "@/context/useWallet";
 import { useCreateMultisig } from "@/hooks/useMultisig";
+import { isArweaveAddress } from "@/utils";
 import { Loader2, Plus } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
 function CreateMultisig() {
   const createMultisig = useCreateMultisig();
-  const { isConnected } = useWallet();
+  const { address, isConnected } = useWallet();
   const [name, setName] = useState("");
   const [signers, setSigners] = useState("");
   const [threshold, setThreshold] = useState(1);
+  const signerList = useMemo(() => {
+    const unique = new Set(
+      signers
+        .split(/\n|,/)
+        .map((signer) => signer.trim())
+        .filter(Boolean)
+    );
+
+    if (address) {
+      unique.add(address);
+    }
+
+    return Array.from(unique);
+  }, [address, signers]);
+  const validSignerCount = signerList.filter(isArweaveAddress).length;
+  const thresholdIsValid = threshold >= 1 && threshold <= validSignerCount;
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const parsedSigners = signers
-      .split(/\n|,/)
-      .map((signer) => signer.trim())
-      .filter(Boolean);
 
     createMultisig.mutate(
-      { name, signers: parsedSigners, threshold },
+      { name, signers: signerList, threshold },
       {
         onSuccess: () => {
           setName("");
@@ -58,6 +71,7 @@ function CreateMultisig() {
           <input
             className="input"
             min={1}
+            max={Math.max(1, validSignerCount)}
             type="number"
             value={threshold}
             onChange={(event) => setThreshold(Number(event.target.value))}
@@ -65,7 +79,12 @@ function CreateMultisig() {
         </label>
         <button
           className="button-primary w-full"
-          disabled={createMultisig.isPending || !isConnected}
+          disabled={
+            createMultisig.isPending ||
+            !isConnected ||
+            validSignerCount === 0 ||
+            !thresholdIsValid
+          }
           type="submit"
         >
           {createMultisig.isPending ? (
@@ -77,6 +96,11 @@ function CreateMultisig() {
         </button>
         {createMultisig.error ? (
           <p className="text-sm text-rose-600">{createMultisig.error.message}</p>
+        ) : null}
+        {isConnected && !thresholdIsValid ? (
+          <p className="text-sm text-slate-500">
+            Threshold must be between 1 and {Math.max(1, validSignerCount)}.
+          </p>
         ) : null}
       </div>
     </form>

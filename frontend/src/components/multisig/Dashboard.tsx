@@ -54,7 +54,11 @@ function MultisigDashboard({ multisig }: { multisig: Multisig | null }) {
 
   const activeCount = multisigData.proposals.filter(
     (proposal) =>
-      getProposalStatus(proposal, multisigData.signers.length) === "active"
+      getProposalStatus(
+        proposal,
+        // multisigData.signers.length,
+        // multisigData.threshold
+      ) === "active"
   ).length;
 
   return (
@@ -72,12 +76,18 @@ function MultisigDashboard({ multisig }: { multisig: Multisig | null }) {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-center sm:min-w-96">
+          <div className="grid grid-cols-3 gap-3 text-center sm:min-w-96">
             <div className="rounded-md bg-slate-50 p-3">
               <p className="text-2xl font-semibold text-slate-950">
                 {multisigData.signers.length}
               </p>
               <p className="text-xs text-slate-500">Signers</p>
+            </div>
+            <div className="rounded-md bg-slate-50 p-3">
+              <p className="text-2xl font-semibold text-slate-950">
+                {multisigData.threshold}
+              </p>
+              <p className="text-xs text-slate-500">Quorum</p>
             </div>
             <div className="rounded-md bg-slate-50 p-3">
               <p className="text-2xl font-semibold text-slate-950">

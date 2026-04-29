@@ -35,11 +35,12 @@ export function useMultisig(multisigId:string) {
       const {multisig_info} = await multisigDataResult.json()
       const proposals = multisig_info.proposals || []
       const signers = multisig_info.signers || []
+      const threshold = Number(multisig_info.threshold || 1)
 
       return {
         processId: multisigId,
         name: multisig_info.name || "Unnamed multisig",
-        threshold: Number(multisig_info.threshold || multisig_info.threshold || 1),
+        threshold,
         signers: Object.keys(signers),
         proposals: proposals || [],
       } satisfies MultisigData
@@ -58,8 +59,11 @@ export function useCreateMultisig() {
       }
 
       const res = await sendCreateMultisig(input);
-      console.log(res)
-      //return createMultisig(input, address);
+      if (res?.isError) {
+        throw new Error(res.error);
+      }
+
+      return true;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
   });

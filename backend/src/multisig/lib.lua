@@ -2,7 +2,7 @@ local utils = require "utils.index"
 local json = require "json"
 
 local default_settings = {
-    threshold = 1, -- Number of signatures required to execute a proposal
+    threshold = 1, -- Wallet quorum required to execute proposals
     defaultEndTime = 60 * 60 * 24 * 1000, -- Default time (in milliseconds) for a proposal to expire (24 hours)
 }
 
@@ -39,6 +39,22 @@ local function signer_count()
     return count
 end
 
+local function current_threshold()
+    local threshold = tonumber(Threshold or default_settings.threshold) or default_settings.threshold
+    local total = signer_count()
+
+    if threshold < 1 then
+        threshold = 1
+    end
+
+    if total > 0 and threshold > total then
+        threshold = total
+    end
+
+    Threshold = threshold
+    return threshold
+end
+
 local function validate_add_signer(address)
     if not utils.is_arweave_address(address) then
         return false, "Valid signer address is required."
@@ -70,8 +86,14 @@ local function validate_remove_signer(address)
         return false, "Signer not registered."
     end
 
-    if signer_count() <= 1 then
+    local remaining_signers = signer_count() - 1
+
+    if remaining_signers < 1 then
         return false, "Cannot remove the last signer."
+    end
+
+    if current_threshold() > remaining_signers then
+        return false, "Cannot remove signer because the threshold would exceed the signer count."
     end
 
     return true
@@ -141,6 +163,7 @@ function lib.create_proposal(msg)
     local startTime = data.startTime or msg.Timestamp
     local endTime = data.endTime or (startTime + default_settings.defaultEndTime)
     local signers_total = signer_count()
+    current_threshold()
 
     if not Signers[from] then
         utils.send_error(msg, "Not allowed to create a proposal. Signer not registered.")
@@ -211,12 +234,11 @@ function lib.create_proposal(msg)
         votes = {},
         executed = false,
         rejected = false,
-        threshold = signers_total,
     }
 
     Proposals[new_proposal.id] = new_proposal
 
-    if signers_total == 1 then
+    if current_threshold() == 1 and signers_total == 1 then
         new_proposal.votes[from] = vote_types.YES -- Automatically vote for the proposal if there's only one signer
         execute_proposal(new_proposal)
     end
@@ -271,14 +293,17 @@ function lib.vote(msg)
 
     proposal.votes[from] = vote
 
-    -- Check if the proposal can be executed based on the votes and threshold
+    -- Check if the proposal can be executed based on the wallet quorum.
     local yesVotes, noVotes = count_votes(proposal)
 
-    if yesVotes >= proposal.threshold then
+    local threshold = current_threshold()
+    local signers_total = signer_count()
+
+    if yesVotes >= threshold then
         execute_proposal(proposal)
     end
 
-    if noVotes > signer_count() - proposal.threshold then
+    if noVotes > signers_total - threshold then
         proposal.rejected = true -- Mark the proposal as rejected since no amount of yes votes can reach the threshold
     end
 

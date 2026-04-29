@@ -41,6 +41,7 @@ function utils.update_multisig_cache()
         device = 'patch@1.0',
         multisig_info = {
             name = Name,
+            threshold = Threshold,
             signers = Signers,
             proposals = prepare_for_cache(Proposals)
         }
@@ -75,7 +76,7 @@ local utils = require "utils.index"
 local json = require "json"
 
 local default_settings = {
-    threshold = 1, -- Number of signatures required to execute a proposal
+    threshold = 1, -- Wallet quorum required to execute proposals
     defaultEndTime = 60 * 60 * 24 * 1000, -- Default time (in milliseconds) for a proposal to expire (24 hours)
 }
 
@@ -112,6 +113,22 @@ local function signer_count()
     return count
 end
 
+local function current_threshold()
+    local threshold = tonumber(Threshold or default_settings.threshold) or default_settings.threshold
+    local total = signer_count()
+
+    if threshold < 1 then
+        threshold = 1
+    end
+
+    if total > 0 and threshold > total then
+        threshold = total
+    end
+
+    Threshold = threshold
+    return threshold
+end
+
 local function validate_add_signer(address)
     if not utils.is_arweave_address(address) then
         return false, "Valid signer address is required."
@@ -143,8 +160,14 @@ local function validate_remove_signer(address)
         return false, "Signer not registered."
     end
 
-    if signer_count() <= 1 then
+    local remaining_signers = signer_count() - 1
+
+    if remaining_signers < 1 then
         return false, "Cannot remove the last signer."
+    end
+
+    if current_threshold() > remaining_signers then
+        return false, "Cannot remove signer because the threshold would exceed the signer count."
     end
 
     return true
@@ -209,11 +232,12 @@ function lib.create_proposal(msg)
 
     local from = msg.From
     local description = data.description
-    local proposal_type = data.proposal_type or data.proposal_types
+    local proposal_type = data.proposal_type
     local payload = data.payload or {}
     local startTime = data.startTime or msg.Timestamp
     local endTime = data.endTime or (startTime + default_settings.defaultEndTime)
     local signers_total = signer_count()
+    current_threshold()
 
     if not Signers[from] then
         utils.send_error(msg, "Not allowed to create a proposal. Signer not registered.")
@@ -231,7 +255,7 @@ function lib.create_proposal(msg)
     end
 
     if proposal_type == proposal_types.add_signer or proposal_type == proposal_types.remove_signer then
-        payload.address = payload.address or data.address
+        payload.address = data.address
 
         local is_valid, error_message
         if proposal_type == proposal_types.add_signer then
@@ -245,8 +269,8 @@ function lib.create_proposal(msg)
             return
         end
     elseif proposal_type == proposal_types.transfer then
-        payload.recipient = payload.recipient or data.recipient
-        payload.amount = payload.amount or data.amount
+        payload.recipient = data.recipient
+        payload.amount = data.amount
 
         if not utils.is_arweave_address(payload.recipient) then
             utils.send_error(msg, "Valid transfer recipient is required.")
@@ -284,12 +308,11 @@ function lib.create_proposal(msg)
         votes = {},
         executed = false,
         rejected = false,
-        threshold = signers_total,
     }
 
     Proposals[new_proposal.id] = new_proposal
 
-    if signers_total == 1 then
+    if current_threshold() == 1 and signers_total == 1 then
         new_proposal.votes[from] = vote_types.YES -- Automatically vote for the proposal if there's only one signer
         execute_proposal(new_proposal)
     end
@@ -344,14 +367,17 @@ function lib.vote(msg)
 
     proposal.votes[from] = vote
 
-    -- Check if the proposal can be executed based on the votes and threshold
+    -- Check if the proposal can be executed based on the wallet quorum.
     local yesVotes, noVotes = count_votes(proposal)
 
-    if yesVotes >= proposal.threshold then
+    local threshold = current_threshold()
+    local signers_total = signer_count()
+
+    if yesVotes >= threshold then
         execute_proposal(proposal)
     end
 
-    if noVotes > signer_count() - proposal.threshold then
+    if noVotes > signers_total - threshold then
         proposal.rejected = true -- Mark the proposal as rejected since no amount of yes votes can reach the threshold
     end
 
@@ -378,12 +404,70 @@ end
 -- Entry: /Users/merdikim/multisig/backend/src/multisig/index.lua
 local lib = require "multisig.lib"
 local utils = require "utils.index"
+local json = require "json"
 
-Name = Name or ao.env.Process.Tags["Name"]
+local process_tags = ao and ao.env and ao.env.Process and ao.env.Process.Tags or {}
+
+local function get_tag(name)
+  return process_tags[name]
+end
+
+local function normalize_signers(raw_signers)
+  local signers = {}
+
+  local function add_signer(address)
+    if utils.is_arweave_address(address) then
+      signers[address] = 1
+    end
+  end
+
+  if type(raw_signers) == "table" then
+    for key, value in pairs(raw_signers) do
+      if type(key) == "string" and value then
+        add_signer(key)
+      end
+
+      add_signer(value)
+    end
+  elseif type(raw_signers) == "string" and raw_signers ~= "" then
+    local ok, decoded = pcall(json.decode, raw_signers)
+    if ok then
+      return normalize_signers(decoded)
+    end
+
+    for signer in raw_signers:gmatch("[^,%s]+") do
+      add_signer(signer)
+    end
+  end
+
+  local owner = get_tag("Owner")
+  add_signer(owner)
+
+  return signers
+end
+
+local function signer_count(signers)
+  local count = 0
+
+  for _ in pairs(signers) do
+    count = count + 1
+  end
+
+  return count
+end
+
+Name = Name or get_tag("Name")
 -- Owner = Owner or ao.env.Process.Tags["Owner"]
 
 --TO DO: think about weighted votes based on stake or other factors
-Signers = {HJuxnSbwMURxYQh6xsXE_3OYWgYGYrUF74muIJJLdNA = 1} -- ao.env.Process.Tags["Signers"] -- list of signer addresses
+Signers = Signers or normalize_signers(get_tag("Signers"))
+Threshold = tonumber(Threshold or get_tag("Threshold")) or 1
+local signers_total = signer_count(Signers)
+if signers_total > 0 and Threshold > signers_total then
+  Threshold = signers_total
+elseif Threshold < 1 then
+  Threshold = 1
+end
 Proposals = Proposals or {}
 
 -- Sync once on process load

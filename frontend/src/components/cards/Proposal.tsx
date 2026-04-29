@@ -39,8 +39,17 @@ function ProposalCard({
   const { address, isConnected } = useWallet();
   const voteProposal = useVote();
   const counts = getVoteCounts(proposal);
-  const status = getProposalStatus(proposal, multisigData.signers.length);
-  const approvalProgress = Math.min(100, (counts.yes / proposal.threshold) * 100);
+  const threshold = multisigData.threshold
+  // const threshold = Math.max(
+  //   1,
+  //   Math.min(multisigData.threshold || 1, multisigData.signers.length)
+  // );
+  const status = getProposalStatus(
+    proposal,
+    // multisigData.signers.length,
+    // threshold
+  );
+  const approvalProgress = Math.min(100, (counts.yes / threshold) * 100);
   const isSigner = Boolean(address && multisigData.signers.includes(address));
   const currentVote = address ? proposal.votes[address] : undefined;
   const votingDisabled =
@@ -89,7 +98,7 @@ function ProposalCard({
             {counts.yes} yes, {counts.no} no
           </span>
           <span>
-            {proposal.threshold} votes required by {formatDate(proposal.endTime)}
+            {threshold} yes votes required by {formatDate(proposal.endTime)}
           </span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-slate-100">

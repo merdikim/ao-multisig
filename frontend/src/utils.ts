@@ -40,7 +40,8 @@ export function getVoteCounts(proposal: Proposal) {
 
 export function getProposalStatus(
   proposal: Proposal,
-  signerCount: number
+  // signerCount: number,
+  // threshold: number
 ): ProposalStatus {
   if (proposal.executed === "true") {
     return "approved";
@@ -50,19 +51,21 @@ export function getProposalStatus(
     return "rejected";
   }
 
-  const { yes, no } = getVoteCounts(proposal);
+  // const { yes, no } = getVoteCounts(proposal);
 
-  if (yes >= proposal.threshold) {
-    return "approved";
-  }
+  // const requiredVotes = Math.max(1, Math.min(threshold, signerCount));
 
-  if (no > signerCount - proposal.threshold) {
-    return "rejected";
-  }
+  // if (yes >= requiredVotes) {
+  //   return "approved";
+  // }
 
-  if (Date.now() > proposal.endTime) {
-    return "expired";
-  }
+  // if (no > signerCount - requiredVotes) {
+  //   return "rejected";
+  // }
+
+  // if (Date.now() > proposal.endTime) {
+  //   return "expired";
+  // }
 
   return "active";
 }
