@@ -18,8 +18,8 @@ export type Proposal = {
   startTime: number;
   endTime: number;
   threshold: number;
-  executed: boolean;
-  rejected: boolean;
+  executed: string;
+  rejected: string;
   votes: Record<string, Vote>;
 };
 

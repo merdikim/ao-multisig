@@ -108,7 +108,9 @@ export async function sendVoteProposal(
     })
   }
 
-  return sendAction(action);
+  const messageId = await sendAction(action);
+  const result = await checkResult(multisigId, messageId);
+  return result;
 }
 
 export async function sendAddSigner(multisigId: string, address: string) {
@@ -142,5 +144,7 @@ export async function sendRemoveSigner(multisigId: string, address: string) {
     })
   }
 
-  return sendAction(action);
+  const messageId = await sendAction(action);
+  const result = await checkResult(multisigId, messageId);
+  return result;
 }

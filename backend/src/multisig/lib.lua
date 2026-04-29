@@ -2,7 +2,7 @@ local utils = require "utils.index"
 local json = require "json"
 
 local default_settings = {
-    treshold = 1, -- Number of signatures required to execute a proposal
+    threshold = 1, -- Number of signatures required to execute a proposal
     defaultEndTime = 60 * 60 * 24 * 1000, -- Default time (in milliseconds) for a proposal to expire (24 hours)
 }
 
@@ -71,7 +71,7 @@ function lib.create_proposal(msg)
         votes = {},
         executed = false,
         rejected = false,
-        treshold = signers_total,
+        threshold = signers_total,
     }
 
     Proposals[new_proposal.id] = new_proposal
@@ -87,7 +87,13 @@ function lib.create_proposal(msg)
 end
 
 function lib.vote(msg)
-    local data = msg.Data
+    local data = json.decode(msg.Data)
+
+    if not data then
+        utils.send_error(msg, "Missing data to vote")
+        return
+    end
+
     local from = msg.From
     local proposalId = data.proposalId
     local vote = data.vote
@@ -113,6 +119,11 @@ function lib.vote(msg)
         return
     end
 
+    if proposal.votes[from] then
+        utils.send_error(msg, "Address has already voted on this proposal.")
+        return
+    end
+
     if vote ~= vote_types.YES and vote ~= vote_types.NO then
         utils.send_error(msg, "Invalid vote type. Use 'yes' or 'no'.")
         return
@@ -131,11 +142,11 @@ function lib.vote(msg)
         end
     end
 
-    if yesVotes >= proposal.treshold then
+    if yesVotes >= proposal.threshold then
         --TO DO: execute the proposal since it meets the threshold
     end
 
-    if noVotes > signer_count() - proposal.treshold then
+    if noVotes > signer_count() - proposal.threshold then
         proposal.rejected = true -- Mark the proposal as rejected since no amount of yes votes can reach the threshold
     end
 
@@ -189,10 +200,22 @@ end
 
 function lib.remove_signer(msg)
     local from = msg.From
-    local signer_to_remove = json.decode(msg.Data).address
+    local data = json.decode(msg.Data)
+
+    if not data then
+        utils.send_error(msg, "Missing data to remove signer")
+        return
+    end
+
+    local signer_to_remove = data.address
 
     if not Signers[from] then
         utils.send_error(msg, "Not allowed to remove signer. Signer not registered.")
+        return
+    end
+
+    if not utils.is_arweave_address(signer_to_remove) then
+        utils.send_error(msg, "Valid signer address is required.")
         return
     end
 

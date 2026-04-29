@@ -42,11 +42,11 @@ export function getProposalStatus(
   proposal: Proposal,
   signerCount: number
 ): ProposalStatus {
-  if (proposal.executed) {
+  if (proposal.executed == "true") {
     return "approved";
   }
 
-  if (proposal.rejected) {
+  if (proposal.rejected == "true") {
     return "rejected";
   }
 

@@ -1,10 +1,11 @@
-import { Clock3, Copy, Loader2, Users } from "lucide-react";
-import { useMultisig } from "@/hooks/useMultisig";
+import { Clock3, Copy, Loader2, Trash2, Users } from "lucide-react";
+import { useMultisig, useRemoveSigner } from "@/hooks/useMultisig";
 import type { Multisig } from "@/types";
 import { getProposalStatus, shortenAddress } from "@/utils";
 import CreateProposal from "@/components/forms/CreateProposal";
 import ProposalCard from "../cards/Proposal";
 import AddSigner from "@/components/forms/AddSigner";
+import { useWallet } from "@/context/useWallet";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not load multisig data.";
@@ -12,6 +13,8 @@ function getErrorMessage(error: unknown) {
 
 function MultisigDashboard({ multisig }: { multisig: Multisig | null }) {
   const {isLoading, isError, error, data:multisigData} = useMultisig(multisig?.processId || '')
+  const removeSigner = useRemoveSigner();
+  const { address, isConnected } = useWallet();
 
   if (!multisig) {
     return (
@@ -128,16 +131,54 @@ function MultisigDashboard({ multisig }: { multisig: Multisig | null }) {
               </span>
             </div>
             <div className="space-y-2">
-              {multisigData.signers.map((signer) => (
-                <div
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                  key={signer}
-                  title={signer}
-                >
-                  {shortenAddress(signer)}
-                </div>
-              ))}
+              {multisigData.signers.map((signer) => {
+                const isConnectedSigner = signer === address;
+
+                return (
+                  <div
+                    className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                    key={signer}
+                    title={signer}
+                  >
+                    <span>{shortenAddress(signer)}</span>
+                    {!isConnectedSigner ? (
+                      <button
+                        aria-label={`Remove ${shortenAddress(signer)}`}
+                        className="icon-button h-8 w-8 text-rose-600 hover:text-rose-700"
+                        disabled={
+                          removeSigner.isPending ||
+                          !isConnected ||
+                          multisigData.signers.length <= 1
+                        }
+                        onClick={() =>
+                          removeSigner.mutate({
+                            multisigId: multisigData.processId,
+                            address: signer,
+                          })
+                        }
+                        title="Remove signer"
+                        type="button"
+                      >
+                        {removeSigner.isPending &&
+                        removeSigner.variables?.address === signer ? (
+                          <Loader2 className="animate-spin" size={15} />
+                        ) : (
+                          <Trash2 size={15} />
+                        )}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
+            {removeSigner.error ? (
+              <p className="mt-3 text-sm text-rose-600">
+                {removeSigner.error.message}
+              </p>
+            ) : null}
+            {removeSigner.isSuccess ? (
+              <p className="mt-3 text-sm text-emerald-700">Signer removed.</p>
+            ) : null}
           </section>
           <AddSigner
             multisigId={multisigData.processId}

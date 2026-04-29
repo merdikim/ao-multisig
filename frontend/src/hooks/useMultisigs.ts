@@ -18,7 +18,7 @@ export function useMultisigs() {
       // console.log(multisigs)
       return [{
         name: "My test MTSG",
-        processId: "Vy-qLLb1jmLs2HonJmfVcc-9iL3Phk1mtP84zJuLlZM",
+        processId: "XIgu83X33W2C7NqmwUlim309W4TYMqlYGmWP2tyLY1Q",
         createdAt: 53875493847
       }]
     },

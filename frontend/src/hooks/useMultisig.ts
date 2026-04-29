@@ -3,9 +3,11 @@ import {
   sendAddSigner,
   sendCreateMultisig,
   sendCreateProposal,
+  sendRemoveSigner,
+  sendVoteProposal,
 } from "@/lib/aoClient";
 import { useWallet } from "@/context/useWallet";
-import type { CreateMultisigInput, CreateProposalInput, MultisigData } from "@/types";
+import type { CreateMultisigInput, CreateProposalInput, MultisigData, Vote } from "@/types";
 import { hyperbeamUrl } from "@/constants";
 import { isArweaveAddress } from "@/utils";
 
@@ -37,7 +39,7 @@ export function useMultisig(multisigId:string) {
       return {
         processId: multisigId,
         name: multisig_info.name || "Unnamed multisig",
-        threshold: Number(multisig_info.threshold || multisig_info.treshold || 1),
+        threshold: Number(multisig_info.threshold || multisig_info.threshold || 1),
         signers: Object.keys(signers),
         proposals: proposals || [],
       } satisfies MultisigData
@@ -83,26 +85,34 @@ export function useCreateProposal() {
   });
 }
 
-// export function useVoteProposal() {
-//   const queryClient = useQueryClient();
-//   const { isConnected } = useWallet();
+export function useVoteProposal() {
+  const queryClient = useQueryClient();
+  const { isConnected } = useWallet();
 
-//   return useMutation({
-//     mutationFn: async (input: {
-//       multisigId: string;
-//       proposalId: number;
-//       vote: Vote;
-//     }) => {
-//       if (!isConnected) {
-//         throw new Error("Connect Wander wallet before voting.");
-//       }
+  return useMutation({
+    mutationFn: async (input: {
+      multisigId: string;
+      proposalId: number;
+      vote: Vote;
+    }) => {
+      if (!isConnected) {
+        throw new Error("Connect Wander wallet before voting.");
+      }
 
-//       await sendVoteProposal(input.multisigId, input.proposalId, input.vote);
-//       return voteProposal(input.multisigId, input.proposalId, input.vote);
-//     },
-//     onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
-//   });
-// }
+      const result = await sendVoteProposal(
+        input.multisigId,
+        input.proposalId,
+        input.vote
+      );
+      if (result?.isError) {
+        throw new Error(result.error);
+      }
+
+      return true;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
+  });
+}
 
 export function useAddSigner() {
   const queryClient = useQueryClient();
@@ -129,19 +139,27 @@ export function useAddSigner() {
   });
 }
 
-// export function useRemoveSigner() {
-//   const queryClient = useQueryClient();
-//   const { isConnected } = useWallet();
+export function useRemoveSigner() {
+  const queryClient = useQueryClient();
+  const { isConnected } = useWallet();
 
-//   return useMutation({
-//     mutationFn: async (input: { multisigId: string; address: string }) => {
-//       if (!isConnected) {
-//         throw new Error("Connect Wander wallet before removing a signer.");
-//       }
+  return useMutation({
+    mutationFn: async (input: { multisigId: string; address: string }) => {
+      if (!isConnected) {
+        throw new Error("Connect Wander wallet before removing a signer.");
+      }
 
-//       await sendRemoveSigner(input.multisigId, input.address);
-//       return removeSigner(input.multisigId, input.address);
-//     },
-//     onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
-//   });
-// }
+      if (!isArweaveAddress(input.address)) {
+        throw new Error("Signer address is invalid.");
+      }
+
+      const result = await sendRemoveSigner(input.multisigId, input.address);
+      if (result?.isError) {
+        throw new Error(result.error);
+      }
+
+      return true;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
+  });
+}
