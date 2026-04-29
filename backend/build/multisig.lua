@@ -230,10 +230,22 @@ function lib.get_proposal(msg)
 end
 
 function lib.add_signer(msg)
-    local new_signer = msg.Data.address
+    local data = json.decode(msg.Data)
+
+    if not data then
+        utils.send_error(msg, "Missing data to add signer")
+        return
+    end
+
+    local new_signer = data.address
 
     if not Signers[msg.From] then
         utils.send_error(msg, "Not allowed to add signer. Signer not registered.")
+        return
+    end
+
+    if not utils.is_arweave_address(new_signer) then
+        utils.send_error(msg, "Valid signer address is required.")
         return
     end
 
@@ -250,7 +262,7 @@ end
 
 function lib.remove_signer(msg)
     local from = msg.From
-    local signer_to_remove = msg.Data.address
+    local signer_to_remove = json.decode(msg.Data).address
 
     if not Signers[from] then
         utils.send_error(msg, "Not allowed to remove signer. Signer not registered.")

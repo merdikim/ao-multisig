@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  sendAddSigner,
   sendCreateMultisig,
   sendCreateProposal,
 } from "@/lib/aoClient";
 import { useWallet } from "@/context/useWallet";
-import type { CreateMultisigInput, CreateProposalInput, MultisigData, Proposal } from "@/types";
+import type { CreateMultisigInput, CreateProposalInput, MultisigData } from "@/types";
 import { hyperbeamUrl } from "@/constants";
 import { isArweaveAddress } from "@/utils";
 
@@ -103,22 +104,30 @@ export function useCreateProposal() {
 //   });
 // }
 
-// export function useAddSigner() {
-//   const queryClient = useQueryClient();
-//   const { isConnected } = useWallet();
+export function useAddSigner() {
+  const queryClient = useQueryClient();
+  const { isConnected } = useWallet();
 
-//   return useMutation({
-//     mutationFn: async (input: { multisigId: string; address: string }) => {
-//       if (!isConnected) {
-//         throw new Error("Connect Wander wallet before adding a signer.");
-//       }
+  return useMutation({
+    mutationFn: async (input: { multisigId: string; address: string }) => {
+      if (!isConnected) {
+        throw new Error("Connect Wander wallet before adding a signer.");
+      }
 
-//       await sendAddSigner(input.multisigId, input.address);
-//       return addSigner(input.multisigId, input.address);
-//     },
-//     onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
-//   });
-// }
+      if (!isArweaveAddress(input.address)) {
+        throw new Error("Enter a valid Arweave wallet address.");
+      }
+
+      const result = await sendAddSigner(input.multisigId, input.address);
+      if (result?.isError) {
+        throw new Error(result.error);
+      }
+
+      return true;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
+  });
+}
 
 // export function useRemoveSigner() {
 //   const queryClient = useQueryClient();

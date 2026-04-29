@@ -28,7 +28,6 @@ async function checkResult(process:string, messageId:string) {
     }
   }
   const error = Messages[0].Tags.find((tag:Tag) => tag.name == "Error")
-  console.log(error)
   if(!error) {
     return {
       isError: false,
@@ -125,7 +124,9 @@ export async function sendAddSigner(multisigId: string, address: string) {
     })
   }
 
-  return sendAction(action);
+  const messageId = await sendAction(action);
+  const result = await checkResult(multisigId, messageId);
+  return result;
 }
 
 export async function sendRemoveSigner(multisigId: string, address: string) {
