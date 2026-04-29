@@ -1,26 +1,40 @@
 import { useWallet } from "@/context/useWallet";
-import { useCreateProposal } from "@/hooks/useMultisig";
-import { Loader2, Plus, Vote } from "lucide-react";
+import { useSendTransferProposal } from "@/hooks/useMultisig";
+import { isArweaveAddress } from "@/utils";
+import { Loader2, Plus, Send } from "lucide-react";
 import { FormEvent, useState } from "react";
 
-type CreateProposalProps = {
+type CreateTransferProposalProps = {
   multisigId: string;
 };
 
-function CreateProposal({ multisigId }: CreateProposalProps) {
-  const createProposal = useCreateProposal();
+function CreateTransferProposal({ multisigId }: CreateTransferProposalProps) {
+  const createProposal = useSendTransferProposal();
   const { isConnected } = useWallet();
-  const [description, setDescription] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("");
   const [durationHours, setDurationHours] = useState(24);
+
+  const trimmedRecipient = recipient.trim();
+  const trimmedAmount = amount.trim();
+  const transferIsValid =
+    isArweaveAddress(trimmedRecipient) && Number(trimmedAmount) > 0;
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
 
     createProposal.mutate(
-      { multisigId, description, durationHours },
+      {
+        multisigId,
+        proposalType: "transfer",
+        durationHours,
+        recipient: trimmedRecipient,
+        amount: trimmedAmount,
+      },
       {
         onSuccess: () => {
-          setDescription("");
+          setRecipient("");
+          setAmount("");
           setDurationHours(24);
         },
       }
@@ -31,22 +45,40 @@ function CreateProposal({ multisigId }: CreateProposalProps) {
     <form className="panel p-4" onSubmit={onSubmit}>
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-amber-50 text-amber-700">
-          <Vote size={18} />
+          <Send size={18} />
         </div>
-        <h2 className="font-semibold text-slate-950">New proposal</h2>
+        <h2 className="font-semibold text-slate-950">Transfer</h2>
       </div>
       <div className="space-y-3">
-        <textarea
-          className="input min-h-28 resize-none"
-          placeholder="Describe the action signers should approve"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          maxLength={500}
-          required
-        />
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>Proposal summary</span>
-          <span>{description.length}/500</span>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Recipient
+            </span>
+            <input
+              className="input"
+              placeholder="Recipient wallet address"
+              value={recipient}
+              onChange={(event) => setRecipient(event.target.value)}
+              maxLength={43}
+              required
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
+              Amount
+            </span>
+            <input
+              className="input"
+              min="0"
+              placeholder="0"
+              step="any"
+              type="number"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              required
+            />
+          </label>
         </div>
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-slate-600">
@@ -66,7 +98,9 @@ function CreateProposal({ multisigId }: CreateProposalProps) {
         <button
           className="button-primary w-full"
           disabled={
-            createProposal.isPending || !isConnected || description.trim() === ""
+            createProposal.isPending ||
+            !isConnected ||
+            !transferIsValid
           }
           type="submit"
         >
@@ -93,4 +127,4 @@ function CreateProposal({ multisigId }: CreateProposalProps) {
   );
 }
 
-export default CreateProposal;
+export default CreateTransferProposal;

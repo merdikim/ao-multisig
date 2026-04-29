@@ -16,12 +16,8 @@ if InitialSync == 'INCOMPLETE' then
 end
 
 
-Handlers.add("Create-Proposal", lib.create_proposal)
+Handlers.add("Create-Proposal", "Create-Proposal", lib.create_proposal)
 
-Handlers.add("Vote-Proposal", lib.vote)
+Handlers.add("Vote-Proposal", "Vote-Proposal", lib.vote)
 
-Handlers.add("Get-Proposal", lib.get_proposal)
-
-Handlers.add("Add-Signer", lib.add_signer)
-
-Handlers.add("Remove-Signer", lib.remove_signer)
+Handlers.add("Get-Proposal", "Get-Proposal", lib.get_proposal)

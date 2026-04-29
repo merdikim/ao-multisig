@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-field
 local utils = require("utils.index")
 
 -- Wallets schema:
@@ -95,7 +96,7 @@ local function emit_patch()
 end
 
 
-Handlers.add("Create-Multisig", function(msg)
+Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
     local from = msg.From
     local data = msg.Data or {}
     local timestamp = msg.Timestamp
@@ -144,7 +145,7 @@ Handlers.add("Create-Multisig", function(msg)
     utils.send_success(msg, {message="Multisig created successfully"})
 end)
 
-Handlers.add("Update-Multisig-Signers", function(msg)
+Handlers.add("Update-Multisig-Signers", "Update-Multisig-Signers", function(msg)
     local process_id = msg.From
     local data = msg.Data or {}
     local timestamp = msg.Timestamp
@@ -187,7 +188,7 @@ Handlers.add("Update-Multisig-Signers", function(msg)
     utils.send_success(msg, {message="Multisig signers updated successfully"})
 end)
 
-Handlers.add("Remove-Multisig-Signers", function(msg)
+Handlers.add("Remove-Multisig-Signers", "Remove-Multisig-Signers", function(msg)
     local process_id = msg.From
     local data = msg.Data or {}
     local timestamp = msg.Timestamp

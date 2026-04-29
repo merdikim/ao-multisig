@@ -1,5 +1,7 @@
 export type Vote = "yes" | "no";
 
+export type ProposalType = "transfer" | "add" | "remove";
+
 export type ProposalStatus = "active" | "approved" | "rejected" | "expired";
 
 export type Tag = {
@@ -15,6 +17,12 @@ export type Signer = {
 export type Proposal = {
   id: number;
   description: string;
+  proposal_type: ProposalType;
+  payload?: {
+    address?: string;
+    recipient?: string;
+    amount?: string;
+  };
   startTime: number;
   endTime: number;
   threshold: number;
@@ -55,8 +63,12 @@ export type CreateMultisigInput = {
 
 export type CreateProposalInput = {
   multisigId: string;
-  description: string;
+  description?: string;
+  proposalType: ProposalType;
   durationHours: number;
+  address?: string;
+  recipient?: string;
+  amount?: string;
 };
 
 export type SendActionInput = {

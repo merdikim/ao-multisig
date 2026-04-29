@@ -11,7 +11,23 @@ local vote_types = {
     NO = "no",
 }
 
+local proposal_types = {
+    transfer = "transfer",
+    add_signer = "add",
+    remove_signer = "remove"
+}
+
 local lib = {}
+
+local function valid_proposal_type(proposal_type)
+    for _, value in pairs(proposal_types) do
+        if proposal_type == value then
+            return true
+        end
+    end
+
+    return false
+end
 
 local function signer_count()
     local count = 0
@@ -21,6 +37,93 @@ local function signer_count()
     end
 
     return count
+end
+
+local function validate_add_signer(address)
+    if not utils.is_arweave_address(address) then
+        return false, "Valid signer address is required."
+    end
+
+    if Signers[address] then
+        return false, "Signer already registered."
+    end
+
+    return true
+end
+
+local function add_signer(address)
+    local is_valid, error_message = validate_add_signer(address)
+    if not is_valid then
+        return false, error_message
+    end
+
+    Signers[address] = 1
+    return true
+end
+
+local function validate_remove_signer(address)
+    if not utils.is_arweave_address(address) then
+        return false, "Valid signer address is required."
+    end
+
+    if not Signers[address] then
+        return false, "Signer not registered."
+    end
+
+    if signer_count() <= 1 then
+        return false, "Cannot remove the last signer."
+    end
+
+    return true
+end
+
+local function remove_signer(address)
+    local is_valid, error_message = validate_remove_signer(address)
+    if not is_valid then
+        return false, error_message
+    end
+
+    Signers[address] = nil
+    return true
+end
+
+local function count_votes(proposal)
+    local yesVotes = 0
+    local noVotes = 0
+
+    for _, v in pairs(proposal.votes) do
+        if v == vote_types.YES then
+            yesVotes = yesVotes + 1
+        elseif v == vote_types.NO then
+            noVotes = noVotes + 1
+        end
+    end
+
+    return yesVotes, noVotes
+end
+
+local function execute_proposal(proposal)
+    if proposal.executed then
+        return true
+    end
+
+    local payload = proposal.payload or {}
+    local is_executed, error_message = true, nil
+
+    if proposal.proposal_type == proposal_types.add_signer then
+        is_executed, error_message = add_signer(payload.address)
+    elseif proposal.proposal_type == proposal_types.remove_signer then
+        is_executed, error_message = remove_signer(payload.address)
+    end
+
+    if not is_executed then
+        proposal.rejected = true
+        proposal.error = error_message
+        return false
+    end
+
+    proposal.executed = true
+    return true
 end
 
 function lib.create_proposal(msg)
@@ -33,10 +136,11 @@ function lib.create_proposal(msg)
 
     local from = msg.From
     local description = data.description
+    local proposal_type = data.proposal_type
+    local payload = data.payload or {}
     local startTime = data.startTime or msg.Timestamp
     local endTime = data.endTime or (startTime + default_settings.defaultEndTime)
     local signers_total = signer_count()
-    --local payload = data.payload -- You can include any additional data you want to associate with the proposal
 
     if not Signers[from] then
         utils.send_error(msg, "Not allowed to create a proposal. Signer not registered.")
@@ -46,6 +150,40 @@ function lib.create_proposal(msg)
     if not description or description == "" then
         utils.send_error(msg, "Description is required.")
         return
+    end
+
+    if not valid_proposal_type(proposal_type) then
+        utils.send_error(msg, "Invalid proposal type. Use 'transfer', 'add', or 'remove'.")
+        return
+    end
+
+    if proposal_type == proposal_types.add_signer or proposal_type == proposal_types.remove_signer then
+        payload.address = data.address
+
+        local is_valid, error_message
+        if proposal_type == proposal_types.add_signer then
+            is_valid, error_message = validate_add_signer(payload.address)
+        else
+            is_valid, error_message = validate_remove_signer(payload.address)
+        end
+
+        if not is_valid then
+            utils.send_error(msg, error_message)
+            return
+        end
+    elseif proposal_type == proposal_types.transfer then
+        payload.recipient = data.recipient
+        payload.amount = data.amount
+
+        if not utils.is_arweave_address(payload.recipient) then
+            utils.send_error(msg, "Valid transfer recipient is required.")
+            return
+        end
+
+        if tonumber(payload.amount) == nil or tonumber(payload.amount) <= 0 then
+            utils.send_error(msg, "Transfer amount must be greater than zero.")
+            return
+        end
     end
 
     if endTime <= startTime then
@@ -66,6 +204,8 @@ function lib.create_proposal(msg)
     local new_proposal = {
         id = #Proposals + 1,
         description = description,
+        proposal_type = proposal_type,
+        payload = payload,
         startTime = startTime,
         endTime = endTime,
         votes = {},
@@ -78,7 +218,7 @@ function lib.create_proposal(msg)
 
     if signers_total == 1 then
         new_proposal.votes[from] = vote_types.YES -- Automatically vote for the proposal if there's only one signer
-        --TODO: execute the proposal immediately since it meets the threshold
+        execute_proposal(new_proposal)
     end
 
     utils.update_multisig_cache()
@@ -132,18 +272,10 @@ function lib.vote(msg)
     proposal.votes[from] = vote
 
     -- Check if the proposal can be executed based on the votes and threshold
-    local yesVotes = 0
-    local noVotes = 0
-    for _, v in pairs(proposal.votes) do
-        if v == vote_types.YES then
-            yesVotes = yesVotes + 1
-        elseif v == vote_types.NO then
-            noVotes = noVotes + 1
-        end
-    end
+    local yesVotes, noVotes = count_votes(proposal)
 
     if yesVotes >= proposal.threshold then
-        --TO DO: execute the proposal since it meets the threshold
+        execute_proposal(proposal)
     end
 
     if noVotes > signer_count() - proposal.threshold then
@@ -165,74 +297,6 @@ function lib.get_proposal(msg)
     end
 
     utils.send_success(msg, { proposal = proposal })
-end
-
-function lib.add_signer(msg)
-    local data = json.decode(msg.Data)
-
-    if not data then
-        utils.send_error(msg, "Missing data to add signer")
-        return
-    end
-
-    local new_signer = data.address
-
-    if not Signers[msg.From] then
-        utils.send_error(msg, "Not allowed to add signer. Signer not registered.")
-        return
-    end
-
-    if not utils.is_arweave_address(new_signer) then
-        utils.send_error(msg, "Valid signer address is required.")
-        return
-    end
-
-    if Signers[new_signer] then
-        utils.send_error(msg, "Signer already registered.")
-        return
-    end
-
-    Signers[new_signer] = 1
-
-    utils.update_multisig_cache()
-    utils.send_success(msg, { message = "Signer registered successfully." })
-end
-
-function lib.remove_signer(msg)
-    local from = msg.From
-    local data = json.decode(msg.Data)
-
-    if not data then
-        utils.send_error(msg, "Missing data to remove signer")
-        return
-    end
-
-    local signer_to_remove = data.address
-
-    if not Signers[from] then
-        utils.send_error(msg, "Not allowed to remove signer. Signer not registered.")
-        return
-    end
-
-    if not utils.is_arweave_address(signer_to_remove) then
-        utils.send_error(msg, "Valid signer address is required.")
-        return
-    end
-
-    if not Signers[signer_to_remove] then
-        utils.send_error(msg, "Signer not registered.")
-        return
-    end
-
-    if signer_count() <= 1 then
-        utils.send_error(msg, "Cannot remove the last signer.")
-        return
-    end
-
-    Signers[signer_to_remove] = nil
-
-    utils.update_multisig_cache()
-    utils.send_success(msg, { message = "Signer unregistered successfully." })
 end
 
 return lib

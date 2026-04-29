@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   sendAddSigner,
   sendCreateMultisig,
-  sendCreateProposal,
+  sendTransferProposal,
   sendRemoveSigner,
-  sendVoteProposal,
+  sendVote,
 } from "@/lib/aoClient";
 import { useWallet } from "@/context/useWallet";
 import type { CreateMultisigInput, CreateProposalInput, MultisigData, Vote } from "@/types";
@@ -65,7 +65,7 @@ export function useCreateMultisig() {
   });
 }
 
-export function useCreateProposal() {
+export function useSendTransferProposal() {
   const queryClient = useQueryClient();
   const { isConnected } = useWallet();
 
@@ -75,7 +75,7 @@ export function useCreateProposal() {
         throw new Error("Connect Wander wallet before creating a proposal.");
       }
 
-      const result = await sendCreateProposal(input);
+      const result = await sendTransferProposal(input);
       if(result?.isError) {
         throw new Error(result.error)
       }
@@ -85,7 +85,7 @@ export function useCreateProposal() {
   });
 }
 
-export function useVoteProposal() {
+export function useVote() {
   const queryClient = useQueryClient();
   const { isConnected } = useWallet();
 
@@ -99,7 +99,7 @@ export function useVoteProposal() {
         throw new Error("Connect Wander wallet before voting.");
       }
 
-      const result = await sendVoteProposal(
+      const result = await sendVote(
         input.multisigId,
         input.proposalId,
         input.vote

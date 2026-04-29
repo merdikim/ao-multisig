@@ -2,7 +2,7 @@ import { Clock3, Copy, Loader2, Trash2, Users } from "lucide-react";
 import { useMultisig, useRemoveSigner } from "@/hooks/useMultisig";
 import type { Multisig } from "@/types";
 import { getProposalStatus, shortenAddress } from "@/utils";
-import CreateProposal from "@/components/forms/CreateProposal";
+import CreateTransferProposal from "@/components/forms/CreateTransferProposal";
 import ProposalCard from "../cards/Proposal";
 import AddSigner from "@/components/forms/AddSigner";
 import { useWallet } from "@/context/useWallet";
@@ -184,7 +184,7 @@ function MultisigDashboard({ multisig }: { multisig: Multisig | null }) {
             multisigId={multisigData.processId}
             signers={multisigData.signers}
           />
-          <CreateProposal multisigId={multisigData.processId} />
+          <CreateTransferProposal multisigId={multisigData.processId} />
         </div>
       </div>
     </main>

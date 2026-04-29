@@ -1,8 +1,33 @@
 import { useWallet } from "@/context/useWallet";
-import { useVoteProposal } from "@/hooks/useMultisig";
+import { useVote } from "@/hooks/useMultisig";
 import { MultisigData, Proposal, Vote } from "@/types";
 import { formatDate, getProposalStatus, getVoteCounts, statusTone } from "@/utils";
 import { Check, Loader2, X } from "lucide-react";
+
+function proposalTypeLabel(proposal: Proposal) {
+  switch (proposal.proposal_type) {
+    case "add":
+      return "Add signer";
+    case "remove":
+      return "Remove signer";
+    default:
+      return "Transfer";
+  }
+}
+
+function proposalPayloadSummary(proposal: Proposal) {
+  if (proposal.proposal_type === "add" || proposal.proposal_type === "remove") {
+    return proposal.payload?.address;
+  }
+
+  if (proposal.proposal_type === "transfer") {
+    return [proposal.payload?.amount, proposal.payload?.recipient]
+      .filter(Boolean)
+      .join(" to ");
+  }
+
+  return undefined;
+}
 
 function ProposalCard({
   multisigData,
@@ -12,7 +37,7 @@ function ProposalCard({
   proposal: Proposal;
 }) {
   const { address, isConnected } = useWallet();
-  const voteProposal = useVoteProposal();
+  const voteProposal = useVote();
   const counts = getVoteCounts(proposal);
   const status = getProposalStatus(proposal, multisigData.signers.length);
   const approvalProgress = Math.min(100, (counts.yes / proposal.threshold) * 100);
@@ -46,10 +71,18 @@ function ProposalCard({
         >
           {status}
         </span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+          {proposalTypeLabel(proposal)}
+        </span>
       </div>
       <p className="text-base font-semibold leading-6 text-slate-950">
         {proposal.description}
       </p>
+      {proposalPayloadSummary(proposal) ? (
+        <p className="mt-2 break-all text-sm text-slate-500">
+          {proposalPayloadSummary(proposal)}
+        </p>
+      ) : null}
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between gap-3 text-sm text-slate-500">
           <span>

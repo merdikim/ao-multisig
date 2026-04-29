@@ -10,6 +10,28 @@ const configuredIndexerProcessId = import.meta.env.VITE_INDEXER_PROCESS_ID as
   | string
   | undefined;
 
+type ProposalDescriptionInput = Pick<
+  CreateProposalInput,
+  "proposalType" | "description" | "address" | "recipient" | "amount"
+>;
+
+function createProposalDescription(input: ProposalDescriptionInput) {
+  const customDescription = input.description?.trim();
+
+  if (input.proposalType === "add") {
+    return customDescription || `Add signer ${input.address}`;
+  }
+
+  if (input.proposalType === "remove") {
+    return customDescription || `Remove signer ${input.address}`;
+  }
+
+  return (
+    customDescription ||
+    `Transfer ${input.amount} to ${input.recipient}`
+  );
+}
+
 
 function getSigner() {
   if (!window.arweaveWallet) {
@@ -20,7 +42,7 @@ function getSigner() {
 
 async function checkResult(process:string, messageId:string) {
   const { Messages } = await result({ process, message: messageId })
-  console.log(Messages)
+  //console.log(Messages)
   if(Messages.length == 0) {
     return {
       isError: false,
@@ -50,7 +72,9 @@ async function sendAction({process, action, tags = [], data}: SendActionInput) {
     data: data,
   });
 
-  return messageId
+  const result = await checkResult(process, messageId)
+
+  return result
 }
 
 export async function sendCreateMultisig(input: CreateMultisigInput) {
@@ -69,7 +93,7 @@ export async function sendCreateMultisig(input: CreateMultisigInput) {
   });
 }
 
-export async function sendCreateProposal(input: CreateProposalInput) {
+export async function sendTransferProposal(input: CreateProposalInput) {
   if (!isArweaveAddress(input.multisigId)) {
     return undefined;
   }
@@ -80,17 +104,18 @@ export async function sendCreateProposal(input: CreateProposalInput) {
     process: input.multisigId,
     action: "Create-Proposal",
     data: JSON.stringify({
-      description: input.description,
+      description: createProposalDescription(input),
+      proposal_type: input.proposalType,
+      recipient: input.recipient,
+      amount: input.amount,
       endTime: Date.now() + hoursToMs
     })
   }
 
-  const messageId = await sendAction(action)
-  const result = await checkResult(input.multisigId, messageId)
-  return result
+  return await sendAction(action)
 }
 
-export async function sendVoteProposal(
+export async function sendVote(
   multisigId: string,
   proposalId: number,
   vote: Vote
@@ -108,9 +133,7 @@ export async function sendVoteProposal(
     })
   }
 
-  const messageId = await sendAction(action);
-  const result = await checkResult(multisigId, messageId);
-  return result;
+  return await sendAction(action);
 }
 
 export async function sendAddSigner(multisigId: string, address: string) {
@@ -120,15 +143,19 @@ export async function sendAddSigner(multisigId: string, address: string) {
 
   const action = {
     process: multisigId,
-    action: "Add-Signer",
+    action: "Create-Proposal",
     data: JSON.stringify({
-      address
+      description: createProposalDescription({
+        proposalType: "add",
+        address,
+      }),
+      proposal_type: "add",
+      address,
+      endTime: Date.now() + 24 * 60 * 60 * 1000
     })
   }
 
-  const messageId = await sendAction(action);
-  const result = await checkResult(multisigId, messageId);
-  return result;
+  return await sendAction(action);
 }
 
 export async function sendRemoveSigner(multisigId: string, address: string) {
@@ -138,13 +165,17 @@ export async function sendRemoveSigner(multisigId: string, address: string) {
 
   const action = {
     process: multisigId,
-    action: "Remove-Signer",
+    action: "Create-Proposal",
     data: JSON.stringify({
-      address
+      description: createProposalDescription({
+        proposalType: "remove",
+        address,
+      }),
+      proposal_type: "remove",
+      address,
+      endTime: Date.now() + 24 * 60 * 60 * 1000
     })
   }
 
-  const messageId = await sendAction(action);
-  const result = await checkResult(multisigId, messageId);
-  return result;
+  return await sendAction(action);
 }
