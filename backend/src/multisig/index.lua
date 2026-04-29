@@ -5,7 +5,7 @@ Name = Name or ao.env.Process.Tags["Name"]
 -- Owner = Owner or ao.env.Process.Tags["Owner"]
 
 --TO DO: think about weighted votes based on stake or other factors
-Signers = {[ao.id] = 1} -- ao.env.Process.Tags["Signers"] -- list of signer addresses
+Signers = {HJuxnSbwMURxYQh6xsXE_3OYWgYGYrUF74muIJJLdNA = 1} -- ao.env.Process.Tags["Signers"] -- list of signer addresses
 Proposals = Proposals or {}
 
 -- Sync once on process load

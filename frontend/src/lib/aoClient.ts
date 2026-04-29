@@ -20,6 +20,7 @@ function getSigner() {
 
 async function checkResult(process:string, messageId:string) {
   const { Messages } = await result({ process, message: messageId })
+  console.log(Messages)
   if(Messages.length == 0) {
     return {
       isError: false,
@@ -27,6 +28,13 @@ async function checkResult(process:string, messageId:string) {
     }
   }
   const error = Messages[0].Tags.find((tag:Tag) => tag.name == "Error")
+  console.log(error)
+  if(!error) {
+    return {
+      isError: false,
+      error: ''
+    }
+  }
   return {
     isError:true,
     error: error.value

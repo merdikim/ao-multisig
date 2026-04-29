@@ -72,10 +72,11 @@ end
 package.preload["multisig.lib"] = function(...)
 -- Source: /Users/merdikim/multisig/backend/src/multisig/lib.lua
 local utils = require "utils.index"
+local json = require "json"
 
 local default_settings = {
     treshold = 1, -- Number of signatures required to execute a proposal
-    defaultEndTime = 60 * 60 * 24, -- Default time (in seconds) for a proposal to expire (24 hours)
+    defaultEndTime = 60 * 60 * 24 * 1000, -- Default time (in milliseconds) for a proposal to expire (24 hours)
 }
 
 local vote_types = {
@@ -96,16 +97,22 @@ local function signer_count()
 end
 
 function lib.create_proposal(msg)
-    local data = msg.Data
+    local data = json.decode(msg.Data)
+
+    if not data then
+        utils.send_error(msg, "Missing data to create a proposal")
+        return
+    end
+
     local from = msg.From
     local description = data.description
-    local endTime = data.endTime or msg.Timestamp + default_settings.defaultEndTime 
-    local startTime = data.startTime or msg.Timestamp 
+    local startTime = data.startTime or msg.Timestamp
+    local endTime = data.endTime or (startTime + default_settings.defaultEndTime)
     local signers_total = signer_count()
     --local payload = data.payload -- You can include any additional data you want to associate with the proposal
 
     if not Signers[from] then
-        utils.send_error(msg, "Not allowed to create proposal. Signer not registered.")
+        utils.send_error(msg, "Not allowed to create a proposal. Signer not registered.")
         return
     end
 
@@ -137,7 +144,7 @@ function lib.create_proposal(msg)
         votes = {},
         executed = false,
         rejected = false,
-        treshold = signers_total, -- TO DO: make this dynamic based on the number of signers or a predefined threshold
+        treshold = signers_total,
     }
 
     Proposals[new_proposal.id] = new_proposal
@@ -277,7 +284,7 @@ Name = Name or ao.env.Process.Tags["Name"]
 -- Owner = Owner or ao.env.Process.Tags["Owner"]
 
 --TO DO: think about weighted votes based on stake or other factors
-Signers = {[ao.id] = 1} -- ao.env.Process.Tags["Signers"] -- list of signer addresses
+Signers = {HJuxnSbwMURxYQh6xsXE_3OYWgYGYrUF74muIJJLdNA = 1} -- ao.env.Process.Tags["Signers"] -- list of signer addresses
 Proposals = Proposals or {}
 
 -- Sync once on process load
