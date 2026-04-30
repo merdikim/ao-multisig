@@ -42,8 +42,16 @@ function utils.update_multisig_cache()
 end
 
 function utils.generate_process_id()
-    -- TO DO: implement a proper unique ID generator
-    return "process_" .. math.random(100000, 999999)
+    local processId = Spawn(ao.env.Module.Id, {
+        Tags = {}
+    }).receive()
+
+    return processId
+
+    -- Spawn(ao.env.Module.Id, {
+    --     Tags = {}
+    -- })
+
 end
 
 function utils.load_multisig_contract(process_id, name, threshold, signers)

@@ -28,6 +28,13 @@ Wallets = Wallets or {}
 -- }
 Multisigs = Multisigs or {}
 
+-- Sync once on process load
+InitialSync = InitialSync or 'INCOMPLETE'
+if InitialSync == 'INCOMPLETE' then
+  utils.update_multisigs_cache()
+  InitialSync = 'COMPLETE'
+end
+
 
 local function add_multisig_to_wallet(address, multisig)
     local wallet = Wallets[address] or {
@@ -118,11 +125,17 @@ Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
     local data = message_data(msg)
     local timestamp = msg.Timestamp
     local name = data.name
+    local process_id = data.process_id
     local signers = normalize_signers(data.signers, from)
     local threshold = tonumber(data.threshold) or 1
 
     if not name or name == "" then
         utils.send_error(msg, "Name is required")
+        return
+    end
+
+    if not utils.is_arweave_address(process_id) then
+        utils.send_error(msg, "Process Id is required")
         return
     end
 
@@ -141,7 +154,8 @@ Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
         return
     end
 
-    local process_id = utils.generate_process_id()
+    --local process_id = utils.generate_process_id()
+    utils.generate_process_id()
     local multisig = {
         process_id = process_id,
         name = name,
@@ -150,8 +164,12 @@ Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
         created_at = timestamp,
         updated_at = timestamp
     }
+    Send({
+        Target=ao.id,
+        Data = json.encode(multisig)
+    })
 
-    utils.load_multisig_contract(process_id, name, threshold, signers)
+    -- utils.load_multisig_contract(process_id, name, threshold, signers)
 
     Multisigs[process_id] = multisig
 
