@@ -18,13 +18,6 @@ export function App() {
         return null;
       }
 
-      if (
-        current &&
-        multisigs.some((multisig) => multisig.process_id === current.process_id)
-      ) {
-        return current;
-      }
-
       return multisigs[0];
     });
   }, [multisigs]);

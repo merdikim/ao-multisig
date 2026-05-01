@@ -22,6 +22,32 @@ export function formatDate(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
+export function formatRelativeTime(timestamp: number) {
+  const diffMs = timestamp - Date.now();
+  const diffSeconds = Math.round(diffMs / 1000);
+  const divisions = [
+    { amount: 60, name: "second" },
+    { amount: 60, name: "minute" },
+    { amount: 24, name: "hour" },
+    { amount: 7, name: "day" },
+    { amount: 4.345, name: "week" },
+    { amount: 12, name: "month" },
+    { amount: Number.POSITIVE_INFINITY, name: "year" },
+  ] as const;
+  let duration = diffSeconds;
+
+  for (const division of divisions) {
+    if (Math.abs(duration) < division.amount) {
+      return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(
+        duration,
+        division.name
+      );
+    }
+
+    duration = Math.round(duration / division.amount);
+  }
+}
+
 export function getVoteCounts(proposal: Proposal) {
   return Object.values(proposal.votes).reduce(
     (counts, vote) => {

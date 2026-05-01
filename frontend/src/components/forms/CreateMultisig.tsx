@@ -21,7 +21,8 @@ function CreateMultisig() {
     return Array.from(unique).filter(isArweaveAddress);
   }, [signers]);
   const validSignerCount = signerList.length;
-  const thresholdIsValid = (threshold == 1 && validSignerCount == 0) || (threshold >= 1 && threshold <= validSignerCount)
+  const totalSignerCount = validSignerCount + 1;
+  const thresholdIsValid = threshold >= 1 && threshold <= totalSignerCount;
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -67,7 +68,7 @@ function CreateMultisig() {
           <input
             className="input"
             min={1}
-            max={Math.max(1, validSignerCount)}
+            max={totalSignerCount}
             type="number"
             value={threshold}
             onChange={(event) => setThreshold(Number(event.target.value))}
@@ -94,7 +95,7 @@ function CreateMultisig() {
         ) : null}
         {isConnected && !thresholdIsValid ? (
           <p className="text-sm text-slate-500">
-            Threshold must be between 1 and {Math.max(1, validSignerCount)}.
+            Threshold must be between 1 and {totalSignerCount}.
           </p>
         ) : null}
       </div>

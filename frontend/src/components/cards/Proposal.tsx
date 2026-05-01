@@ -1,8 +1,8 @@
 import { useWallet } from "@/context/useWallet";
 import { useVote } from "@/hooks/useMultisig";
 import { MultisigData, Proposal, Vote } from "@/types";
-import { formatDate, getProposalStatus, getVoteCounts, statusTone } from "@/utils";
-import { Check, Loader2, X } from "lucide-react";
+import { formatDate, formatRelativeTime, getProposalStatus, getVoteCounts, statusTone } from "@/utils";
+import { Check, Clock3, Loader2, X } from "lucide-react";
 
 function proposalTypeLabel(proposal: Proposal) {
   switch (proposal.proposal_type) {
@@ -69,19 +69,25 @@ function ProposalCard({
 
   return (
     <article className="rounded-md border border-slate-200 bg-white p-4">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-slate-500">
-          Proposal #{proposal.id}
-        </span>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ${statusTone(
-            status
-          )}`}
-        >
-          {status}
-        </span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-          {proposalTypeLabel(proposal)}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-slate-500">
+            Proposal #{proposal.id}
+          </span>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ${statusTone(
+              status
+            )}`}
+          >
+            {status}
+          </span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+            {proposalTypeLabel(proposal)}
+          </span>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+          <Clock3 size={13} />
+          {formatRelativeTime(proposal.startTime)}
         </span>
       </div>
       <p className="text-base font-semibold leading-6 text-slate-950">
