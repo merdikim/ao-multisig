@@ -38,6 +38,24 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     void refreshAddress();
   }, [refreshAddress]);
 
+  useEffect(() => {
+    const handleWalletChange = () => {
+      void refreshAddress();
+    };
+
+    window.addEventListener("arweaveWalletLoaded", handleWalletChange);
+    window.addEventListener("walletSwitch", handleWalletChange);
+    window.addEventListener("walletDisconnect", handleWalletChange);
+    window.addEventListener("focus", handleWalletChange);
+
+    return () => {
+      window.removeEventListener("arweaveWalletLoaded", handleWalletChange);
+      window.removeEventListener("walletSwitch", handleWalletChange);
+      window.removeEventListener("walletDisconnect", handleWalletChange);
+      window.removeEventListener("focus", handleWalletChange);
+    };
+  }, [refreshAddress]);
+
   const connectWallet = useCallback(async () => {
     if (!window.arweaveWallet) {
       setStatus("missing");
