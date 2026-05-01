@@ -4,7 +4,8 @@ export function isArweaveAddress(processId: string) {
 
 import type { Proposal, ProposalStatus } from "@/types";
 
-export function shortenAddress(address: string) {
+export function shortenAddress(address: string | undefined ) {
+  if(!address) return 
   if (address.length <= 16) {
     return address;
   }

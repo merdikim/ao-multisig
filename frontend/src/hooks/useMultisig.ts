@@ -34,14 +34,15 @@ export function useMultisig(multisigId:string) {
       }
       const {multisig_info} = await multisigDataResult.json()
       const proposals = multisig_info.proposals || []
-      const signers = multisig_info.signers || []
+      const signers = multisig_info.signers || {}
+      const { commitments: _commitments, ...validSigners } = signers
       const threshold = Number(multisig_info.threshold || 1)
 
       return {
         processId: multisigId,
         name: multisig_info.name || "Unnamed multisig",
         threshold,
-        signers: Object.keys(signers),
+        signers: Object.keys(validSigners),
         proposals: proposals || [],
       } satisfies MultisigData
     },
@@ -63,9 +64,12 @@ export function useCreateMultisig() {
         throw new Error(res.error);
       }
 
-      return true;
+      return res?.message || 'success';
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dashboardKey });
+      queryClient.invalidateQueries({ queryKey: ["multisigs"] });
+    },
   });
 }
 

@@ -84,6 +84,15 @@ end
 local utils = require("utils.index")
 local json = require("json")
 
+local function emit_patch()
+    Send({
+        device = "patch@1.0",
+---@diagnostic disable-next-line: assign-type-mismatch
+        wallets = Wallets,
+        multisigs = Multisigs
+    })
+end
+
 -- Wallets schema:
 -- {
 --   [wallet_address] = {
@@ -113,7 +122,7 @@ Multisigs = Multisigs or {}
 -- Sync once on process load
 InitialSync = InitialSync or 'INCOMPLETE'
 if InitialSync == 'INCOMPLETE' then
-  utils.update_multisigs_cache()
+  emit_patch()
   InitialSync = 'COMPLETE'
 end
 
@@ -179,15 +188,6 @@ local function normalize_signers(signers, creator)
     return normalized
 end
 
-local function emit_patch()
-    Send({
-        device = "patch@1.0",
----@diagnostic disable-next-line: assign-type-mismatch
-        wallets = Wallets,
-        multisigs = Multisigs
-    })
-end
-
 local function message_data(msg)
     if type(msg.Data) ~= "string" then
         return msg.Data or {}
@@ -202,26 +202,26 @@ local function message_data(msg)
 end
 
 
-Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
+Handlers.add("Add-Multisig", "Add-Multisig", function(msg)
     local from = msg.From
-    local data = { name = "mhgk", threshold = 2, signers={'t1EsKTAaXqxElSsnGsL_Xf8ls7AcRTfFOK5vwIJAOpU', 'HJuxnSbwMURxYQh6xsXE_3OYWgYGYrUF74muIJJLdNA'}} --message_data(msg)
+    local data = message_data(msg)
     local timestamp = msg.Timestamp
     local name = data.name
+    local process_id = data.process_id
     local signers = normalize_signers(data.signers, from)
-    local threshold = tonumber(data.threshold) or 1
 
     if not name or name == "" then
         utils.send_error(msg, "Name is required")
         return
     end
 
-    if #signers == 0 then
-        utils.send_error(msg, "At least one valid signer is required")
+    if not utils.is_arweave_address(process_id) then
+        utils.send_error(msg, "Process Id is required")
         return
     end
 
-    if threshold < 1 or threshold > #signers then
-        utils.send_error(msg, "Threshold must be between 1 and the signer count")
+    if #signers == 0 then
+        utils.send_error(msg, "At least one valid signer is required")
         return
     end
 
@@ -231,12 +231,9 @@ Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
     end
 
     --local process_id = utils.generate_process_id()
-    utils.generate_process_id()
     local multisig = {
-        process_id = 'process_id',
+        process_id = process_id,
         name = name,
-        threshold = threshold,
-        signers = signers,
         created_at = timestamp,
         updated_at = timestamp
     }
@@ -247,14 +244,14 @@ Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
 
     -- utils.load_multisig_contract(process_id, name, threshold, signers)
 
-    -- Multisigs[process_id] = multisig
+    Multisigs[process_id] = multisig
 
-    -- for _, signer in ipairs(signers) do
-    --     add_multisig_to_wallet(signer, multisig)
-    -- end
+    for _, signer in ipairs(signers) do
+        add_multisig_to_wallet(signer, multisig)
+    end
 
     emit_patch()
-    -- utils.send_success(msg, {message="Multisig created successfully"})
+    utils.send_success(msg, {message="Multisig created successfully"})
 end)
 
 Handlers.add("Update-Multisig-Signers", "Update-Multisig-Signers", function(msg)

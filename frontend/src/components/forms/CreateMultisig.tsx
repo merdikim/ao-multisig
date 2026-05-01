@@ -6,7 +6,7 @@ import { FormEvent, useMemo, useState } from "react";
 
 function CreateMultisig() {
   const createMultisig = useCreateMultisig();
-  const { address, isConnected } = useWallet();
+  const { isConnected } = useWallet();
   const [name, setName] = useState("");
   const [signers, setSigners] = useState("");
   const [threshold, setThreshold] = useState(1);
@@ -18,14 +18,10 @@ function CreateMultisig() {
         .filter(Boolean)
     );
 
-    if (address) {
-      unique.add(address);
-    }
-
-    return Array.from(unique);
-  }, [address, signers]);
-  const validSignerCount = signerList.filter(isArweaveAddress).length;
-  const thresholdIsValid = threshold >= 1 && threshold <= validSignerCount;
+    return Array.from(unique).filter(isArweaveAddress);
+  }, [signers]);
+  const validSignerCount = signerList.length;
+  const thresholdIsValid = (threshold == 1 && validSignerCount == 0) || (threshold >= 1 && threshold <= validSignerCount)
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -82,8 +78,7 @@ function CreateMultisig() {
           disabled={
             createMultisig.isPending ||
             !isConnected ||
-            validSignerCount === 0 ||
-            !thresholdIsValid
+            !thresholdIsValid || !name
           }
           type="submit"
         >

@@ -471,8 +471,7 @@ local function normalize_signers(raw_signers)
     end
   end
 
-  local owner = get_tag("Owner")
-  add_signer(owner)
+  add_signer(Owner)
 
   return signers
 end

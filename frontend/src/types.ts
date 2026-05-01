@@ -31,9 +31,9 @@ export type Proposal = {
 };
 
 export type Multisig = {
-  processId: string;
+  process_id: string;
   name: string;
-  createdAt: number;
+  created_at: number;
 };
 
 export type MultisigData = {
@@ -46,7 +46,7 @@ export type MultisigData = {
 
 export type WalletSummary = {
   address: string;
-  multisigs: Pick<Multisig, "processId" | "name" | "createdAt">[];
+  multisigs: Pick<Multisig, "process_id" | "name" | "created_at">[];
 };
 
 export type Dashboard = {

@@ -12,7 +12,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function MultisigDashboard({ multisig }: { multisig: Multisig | null }) {
-  const {isLoading, isError, error, data:multisigData} = useMultisig(multisig?.processId || '')
+  const {isLoading, isError, error, data:multisigData} = useMultisig(multisig?.process_id || '')
   const removeSigner = useRemoveSigner();
   const { address, isConnected } = useWallet();
 

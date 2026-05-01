@@ -1,14 +1,17 @@
 import {connect, createDataItemSigner} from "@permaweb/aoconnect"
 import type { CreateMultisigInput, CreateProposalInput, Vote, Tag, SendActionInput } from "@/types";
 import { isArweaveAddress } from "@/utils";
-import { hyperbeamUrl, scheduler } from "@/constants";
+import { hyperbeamUrl, moduleId, multisigIndexer, scheduler } from "@/constants";
+import multisigWalletSource from "../../wallet/multisig.lua?raw";
 
-const { message, result} = connect(
-  {MODE:"mainnet", SCHEDULER:scheduler, URL:hyperbeamUrl, signer: createDataItemSigner(window.arweaveWallet)}
+const {spawn, message, result} = connect(
+  {
+    MODE:"mainnet", 
+    SCHEDULER:scheduler, 
+    URL:hyperbeamUrl, 
+    signer: createDataItemSigner(window.arweaveWallet)
+  }
 )
-const configuredIndexerProcessId = import.meta.env.VITE_INDEXER_PROCESS_ID as
-  | string
-  | undefined;
 
 type ProposalDescriptionInput = Pick<
   CreateProposalInput,
@@ -42,7 +45,7 @@ function getSigner() {
 
 async function checkResult(process:string, messageId:string) {
   const { Messages } = await result({ process, message: messageId })
-  //console.log(Messages)
+  console.log(Messages)
   if(Messages.length == 0) {
     return {
       isError: false,
@@ -53,7 +56,7 @@ async function checkResult(process:string, messageId:string) {
   if(!error) {
     return {
       isError: false,
-      error: ''
+      message: Messages[0].Data
     }
   }
   return {
@@ -77,18 +80,41 @@ async function sendAction({process, action, tags = [], data}: SendActionInput) {
   return result
 }
 
+async function loadMultisigWallet(process: string) {
+  return await sendAction({
+    process,
+    action: "Eval",
+    data: multisigWalletSource
+  });
+}
+
 export async function sendCreateMultisig(input: CreateMultisigInput) {
-  if (!configuredIndexerProcessId) {
+  if (!multisigIndexer) {
     return undefined;
   }
 
-  return sendAction({
-    process: configuredIndexerProcessId,
-    action: "Create-Multisig",
+  const processId = await spawn({
+    module: moduleId,
+    signer: getSigner(),
+    tags: [
+      { name: "Name", value: input.name },
+      { name: "Signers", value: JSON.stringify(input.signers) },
+      { name: "Threshold", value: String(input.threshold) },
+    ],
+  });
+
+  const loadResult = await loadMultisigWallet(processId);
+  if (loadResult.isError) {
+    return loadResult;
+  }
+
+  return await sendAction({
+    process: multisigIndexer,
+    action: "Add-Multisig",
     data: JSON.stringify({
       name: input.name,
+      process_id: processId, 
       signers: input.signers,
-      threshold: input.threshold,
     }),
   });
 }

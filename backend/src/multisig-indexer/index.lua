@@ -2,6 +2,15 @@
 local utils = require("utils.index")
 local json = require("json")
 
+local function emit_patch()
+    Send({
+        device = "patch@1.0",
+---@diagnostic disable-next-line: assign-type-mismatch
+        wallets = Wallets,
+        multisigs = Multisigs
+    })
+end
+
 -- Wallets schema:
 -- {
 --   [wallet_address] = {
@@ -31,7 +40,7 @@ Multisigs = Multisigs or {}
 -- Sync once on process load
 InitialSync = InitialSync or 'INCOMPLETE'
 if InitialSync == 'INCOMPLETE' then
-  utils.update_multisigs_cache()
+  emit_patch()
   InitialSync = 'COMPLETE'
 end
 
@@ -97,15 +106,6 @@ local function normalize_signers(signers, creator)
     return normalized
 end
 
-local function emit_patch()
-    Send({
-        device = "patch@1.0",
----@diagnostic disable-next-line: assign-type-mismatch
-        wallets = Wallets,
-        multisigs = Multisigs
-    })
-end
-
 local function message_data(msg)
     if type(msg.Data) ~= "string" then
         return msg.Data or {}
@@ -120,14 +120,13 @@ local function message_data(msg)
 end
 
 
-Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
+Handlers.add("Add-Multisig", "Add-Multisig", function(msg)
     local from = msg.From
     local data = message_data(msg)
     local timestamp = msg.Timestamp
     local name = data.name
     local process_id = data.process_id
     local signers = normalize_signers(data.signers, from)
-    local threshold = tonumber(data.threshold) or 1
 
     if not name or name == "" then
         utils.send_error(msg, "Name is required")
@@ -144,23 +143,15 @@ Handlers.add("Create-Multisig", "Create-Multisig", function(msg)
         return
     end
 
-    if threshold < 1 or threshold > #signers then
-        utils.send_error(msg, "Threshold must be between 1 and the signer count")
-        return
-    end
-
     if wallet_has_multisig_name(from, name) then
         utils.send_error(msg, "Multisig with this name already exists for this creator")
         return
     end
 
     --local process_id = utils.generate_process_id()
-    utils.generate_process_id()
     local multisig = {
         process_id = process_id,
         name = name,
-        threshold = threshold,
-        signers = signers,
         created_at = timestamp,
         updated_at = timestamp
     }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import type { Multisig } from "@/types";
 import MultisigDashboard from "@/components/multisig/Dashboard";
@@ -8,8 +8,26 @@ import { useMultisigs } from "@/hooks/useMultisigs";
 import Multisigs from "@/components/Multisigs";
 
 export function App() {
+  const {isLoading, isError, error, data} = useMultisigs()
+  const multisigs = data ?? [];
   const [selectedMultisig, setSelectedMultisig] = useState<Multisig | null>(null);
-  const {isLoading, isError, error, data:multisigs} = useMultisigs()
+
+  useEffect(() => {
+    setSelectedMultisig((current) => {
+      if (multisigs.length === 0) {
+        return null;
+      }
+
+      if (
+        current &&
+        multisigs.some((multisig) => multisig.process_id === current.process_id)
+      ) {
+        return current;
+      }
+
+      return multisigs[0];
+    });
+  }, [multisigs]);
 
   if (isLoading) {
     return (

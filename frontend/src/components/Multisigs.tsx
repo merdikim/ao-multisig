@@ -11,6 +11,7 @@ function Multisigs({
   selected: Multisig | null;
   onSelect: (multisig: Multisig) => void;
 }) {
+
   return (
     <aside className="panel overflow-hidden">
       <div className="border-b border-slate-200 px-4 py-3">
@@ -21,9 +22,9 @@ function Multisigs({
       <div className="divide-y max-h-[40vh] overflow-scroll divide-slate-100">
         {multisigs?.map((multisig) => (
           <button
-            key={multisig.processId}
+            key={multisig.process_id}
             className={`flex w-full items-start gap-3 px-4 py-4 text-left transition ${
-              selected?.processId === multisig.processId
+              selected?.process_id === multisig.process_id
                 ? "bg-teal-50"
                 : "bg-white hover:bg-slate-50"
             }`}
@@ -37,7 +38,7 @@ function Multisigs({
                 {multisig.name}
               </p>
               <p className="break-all text-xs text-slate-400">
-                {shortenAddress(multisig.processId)}
+                {shortenAddress(multisig.process_id)}
               </p>
             </div>
           </button>
